@@ -4,6 +4,7 @@ import { IngestionPanel } from './components/IngestionPanel';
 import { DocumentList } from './components/DocumentList';
 import { ChunkInspectorModal } from './components/ChunkInspectorModal';
 import { QueryShell } from './components/QueryShell';
+import { EntityRegistryPanel } from './components/EntityRegistryPanel';
 import { fetchHealth, listDocuments } from './services/apiClient';
 import { ReadyHealthResponse, DocumentResponse } from './types/api';
 import { ShieldCheck } from 'lucide-react';
@@ -102,6 +103,12 @@ export const App: React.FC = () => {
             onSelectDocument={setSelectedDoc}
           />
         </div>
+
+        {/* Phase 3: Knowledge Graph Entities & Ambiguity Review Panel */}
+        <EntityRegistryPanel
+          tenantId={tenantId}
+          corpusId={corpusId}
+        />
 
         {/* Multi-Hop Query Explorer Shell */}
         <QueryShell />

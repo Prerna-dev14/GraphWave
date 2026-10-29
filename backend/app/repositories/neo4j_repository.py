@@ -131,6 +131,65 @@ class Neo4jRepository:
                     text=chunk.text,
                 )
 
+    async def merge_entity_node(self, entity: Entity):
+        """Idempotently writes canonical Entity node with aliases and properties."""
+        node_key = f"entity:{entity.canonical_id}"
+        self._mem_nodes[node_key] = {
+            "type": "Entity",
+            "canonical_id": entity.canonical_id,
+            "name": entity.name,
+            "entity_type": entity.entity_type.value,
+            "tenant_id": entity.tenant_id,
+            "corpus_id": entity.corpus_id,
+            "aliases": list(entity.aliases),
+            "confidence": entity.confidence,
+        }
+
+        if not self.is_connected or not self.driver:
+            return
+
+        async with self.driver.session(database=settings.NEO4J_DATABASE) as session:
+            await session.run(
+                """
+                MERGE (e:Entity {canonical_id: $cid, tenant_id: $tenant_id, corpus_id: $corpus_id})
+                SET e.name = $name,
+                    e.type = $type,
+                    e.aliases = $aliases,
+                    e.confidence = $confidence,
+                    e.updated_at = timestamp()
+                """,
+                cid=entity.canonical_id,
+                tenant_id=entity.tenant_id,
+                corpus_id=entity.corpus_id,
+                name=entity.name,
+                type=entity.entity_type.value,
+                aliases=entity.aliases,
+                confidence=entity.confidence,
+            )
+
+    async def merge_alias_edge(self, alias_cid: str, target_cid: str):
+        """Idempotently writes ALIAS_OF relationship between two entities."""
+        self._mem_edges.append({
+            "source": alias_cid,
+            "target": target_cid,
+            "type": "ALIAS_OF",
+            "tenant_id": settings.DEFAULT_TENANT_ID,
+            "corpus_id": settings.DEFAULT_CORPUS_ID,
+        })
+        if not self.is_connected or not self.driver:
+            return
+
+        async with self.driver.session(database=settings.NEO4J_DATABASE) as session:
+            await session.run(
+                """
+                MATCH (a:Entity {canonical_id: $alias_cid}), (b:Entity {canonical_id: $target_cid})
+                MERGE (a)-[r:ALIAS_OF]->(b)
+                SET r.updated_at = timestamp()
+                """,
+                alias_cid=alias_cid,
+                target_cid=target_cid,
+            )
+
     async def merge_candidate_claim(self, claim: CandidateClaim):
         """Idempotently writes entity nodes and typed edge with complete provenance."""
         self._mem_edges.append({
@@ -142,6 +201,61 @@ class Neo4jRepository:
             "corpus_id": claim.corpus_id,
             "source_chunk_ids": [claim.provenance.chunk_id],
         })
+
+    async def merge_resolved_relationship(
+        self,
+        subject: Entity,
+        relation_type: str,
+        object_entity: Entity,
+        source_chunk_id: str,
+        document_version: str,
+        confidence: float,
+        evidence_text: str,
+    ):
+        """Idempotently writes typed directed relationship between canonical entities with provenance."""
+        edge_data = {
+            "source": subject.canonical_id,
+            "target": object_entity.canonical_id,
+            "relation": relation_type,
+            "confidence": confidence,
+            "tenant_id": subject.tenant_id,
+            "corpus_id": subject.corpus_id,
+            "source_chunk_ids": [source_chunk_id],
+            "document_version": document_version,
+            "evidence_text": evidence_text,
+        }
+        self._mem_edges.append(edge_data)
+
+        if not self.is_connected or not self.driver:
+            return
+
+        async with self.driver.session(database=settings.NEO4J_DATABASE) as session:
+            # We use a parameterized typed Cypher query
+            cypher = f"""
+            MATCH (s:Entity {{canonical_id: $s_cid, tenant_id: $tenant_id, corpus_id: $corpus_id}})
+            MATCH (o:Entity {{canonical_id: $o_cid, tenant_id: $tenant_id, corpus_id: $corpus_id}})
+            MERGE (s)-[r:{relation_type} {{tenant_id: $tenant_id, corpus_id: $corpus_id}}]->(o)
+            SET r.confidence = $confidence,
+                r.document_version = $version,
+                r.evidence_text = $evidence,
+                r.source_chunk_ids = CASE
+                    WHEN r.source_chunk_ids IS NULL THEN [$chunk_id]
+                    WHEN NOT $chunk_id IN r.source_chunk_ids THEN r.source_chunk_ids + $chunk_id
+                    ELSE r.source_chunk_ids
+                END,
+                r.updated_at = timestamp()
+            """
+            await session.run(
+                cypher,
+                s_cid=subject.canonical_id,
+                o_cid=object_entity.canonical_id,
+                tenant_id=subject.tenant_id,
+                corpus_id=subject.corpus_id,
+                confidence=confidence,
+                version=document_version,
+                evidence=evidence_text,
+                chunk_id=source_chunk_id,
+            )
 
 
 neo4j_repo = Neo4jRepository()

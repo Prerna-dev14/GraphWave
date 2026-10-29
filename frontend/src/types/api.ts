@@ -56,6 +56,31 @@ export interface CandidateClaimResponse {
   evidence_text: string;
 }
 
+export interface CanonicalEntityResponse {
+  canonical_id: string;
+  name: string;
+  entity_type: string;
+  tenant_id: string;
+  corpus_id: string;
+  aliases: string[];
+  mention_count: number;
+  created_at: string;
+}
+
+export interface AmbiguousMatch {
+  id: string;
+  mention_a: string;
+  type_a: string;
+  canonical_id_a: string;
+  mention_b: string;
+  type_b: string;
+  canonical_id_b: string;
+  similarity_score: number;
+  status: string;
+  reason: string;
+  created_at: string;
+}
+
 export interface ServiceDependencyStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
   latency_ms?: number;

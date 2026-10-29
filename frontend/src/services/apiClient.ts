@@ -68,3 +68,36 @@ export async function fetchDocumentClaims(docId: string): Promise<import('../typ
   }
   return resp.json();
 }
+
+export async function listCanonicalEntities(
+  tenantId: string,
+  corpusId: string
+): Promise<import('../types/api').CanonicalEntityResponse[]> {
+  const resp = await fetch(
+    `${BASE_URL}/api/v1/entities?tenant_id=${encodeURIComponent(tenantId)}&corpus_id=${encodeURIComponent(corpusId)}`
+  );
+  if (!resp.ok) {
+    throw new Error('Failed to list canonical entities');
+  }
+  return resp.json();
+}
+
+export async function listAmbiguities(): Promise<import('../types/api').AmbiguousMatch[]> {
+  const resp = await fetch(`${BASE_URL}/api/v1/entities/ambiguities`);
+  if (!resp.ok) {
+    throw new Error('Failed to fetch ambiguities');
+  }
+  return resp.json();
+}
+
+export async function resolveAmbiguity(matchId: string, action: 'APPROVE_MERGE' | 'REJECT_MERGE') {
+  const resp = await fetch(`${BASE_URL}/api/v1/entities/resolve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ match_id: matchId, action }),
+  });
+  if (!resp.ok) {
+    throw new Error('Failed to resolve ambiguity');
+  }
+  return resp.json();
+}

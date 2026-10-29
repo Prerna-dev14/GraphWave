@@ -181,8 +181,10 @@ class IngestionService:
             await self.graph_repo.merge_document_and_chunks(document, chunks)
 
             # 6. Candidate claim extraction & validation via ExtractionService (Phase 2)
+            # and Conservative Entity Resolution & Graph Writes (Phase 3)
             extracted_claims_count = 0
             from app.services.extraction_service import extraction_service
+            from app.services.entity_resolution_service import entity_resolution_service
 
             for chunk in chunks:
                 claims, run_resp = await extraction_service.extract_and_validate(
@@ -196,7 +198,32 @@ class IngestionService:
                     corpus_id=corpus_id,
                 )
                 for claim in claims:
-                    await self.graph_repo.merge_candidate_claim(claim)
+                    # Phase 3: Conservative Entity Resolution
+                    subject_entity = await entity_resolution_service.resolve_entity(
+                        mention=claim.subject_entity,
+                        entity_type=claim.subject_type,
+                        tenant_id=tenant_id,
+                        corpus_id=corpus_id,
+                        confidence=claim.confidence,
+                    )
+                    object_entity = await entity_resolution_service.resolve_entity(
+                        mention=claim.object_entity,
+                        entity_type=claim.object_type,
+                        tenant_id=tenant_id,
+                        corpus_id=corpus_id,
+                        confidence=claim.confidence,
+                    )
+
+                    # Phase 3: Idempotent Graph Write with Canonical IDs & Provenance
+                    await self.graph_repo.merge_resolved_relationship(
+                        subject=subject_entity,
+                        relation_type=claim.relation.value,
+                        object_entity=object_entity,
+                        source_chunk_id=chunk.id,
+                        document_version=version,
+                        confidence=claim.confidence,
+                        evidence_text=claim.evidence_text,
+                    )
                     extracted_claims_count += 1
 
             # 7. Update Job Status to COMPLETED
