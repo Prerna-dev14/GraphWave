@@ -137,7 +137,7 @@ npm run build
 | **Phase 1** | Repo Setup, Postgres/pgvector & Neo4j Config, Health Checks, Ingestion Skeleton, Frontend Shell | **COMPLETED** |
 | **Phase 2** | Extraction Pipeline: Schema Constraints, Confidence Thresholding, Prompt Injection Defense, Audit Logs | **COMPLETED** |
 | **Phase 3** | Entity Resolution & Graph Writes: Normalization, Aliases, Ambiguity Queue, Idempotent Writes | **COMPLETED** |
-| **Phase 4** | Hybrid Retrieval Planner: Vector Seed + Bounded Cypher Expansion | **READY FOR APPROVAL** |
-| **Phase 5** | Answer Synthesis with Exact Citations & Interactive Graph Visualizer UI | Planned |
+| **Phase 4** | Hybrid Retrieval Planner: Vector Seed + Bounded Cypher Expansion & Evidence Fusion | **COMPLETED** |
+| **Phase 5** | Answer Synthesis with Exact Citations & Interactive Graph Visualizer UI | **READY FOR APPROVAL** |
 | **Phase 6** | Automated Multi-Hop Evaluation Benchmark Execution (Vector vs Graph vs Hybrid) | Planned |
 | **Phase 7** | System Hardening, Tenant Scoping, Rate Limiting, Release Candidate | Planned |

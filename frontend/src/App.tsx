@@ -111,7 +111,10 @@ export const App: React.FC = () => {
         />
 
         {/* Multi-Hop Query Explorer Shell */}
-        <QueryShell />
+        <QueryShell
+          tenantId={tenantId}
+          corpusId={corpusId}
+        />
       </main>
 
       {/* Chunk Inspector Modal */}

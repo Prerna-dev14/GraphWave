@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Search, Compass, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Search, Compass, ArrowRight, Sparkles, Loader2, GitCommit, Layers, Clock, AlertCircle } from 'lucide-react';
+import { RetrievalMode, EvidenceBundleResponse } from '../types/api';
+import { executeRetrieve } from '../services/apiClient';
 
 const BENCHMARK_QUERIES = [
   {
@@ -24,26 +26,52 @@ const BENCHMARK_QUERIES = [
   },
 ];
 
-export const QueryShell: React.FC = () => {
-  const [query, setQuery] = useState(BENCHMARK_QUERIES[0].q);
-  const [mode, setMode] = useState<'hybrid' | 'vector' | 'graph'>('hybrid');
-  const [submittedQuery, setSubmittedQuery] = useState<string | null>(null);
+interface QueryShellProps {
+  tenantId: string;
+  corpusId: string;
+}
 
-  const handleSubmit = (e: React.FormEvent) => {
+export const QueryShell: React.FC<QueryShellProps> = ({ tenantId, corpusId }) => {
+  const [query, setQuery] = useState(BENCHMARK_QUERIES[0].q);
+  const [mode, setMode] = useState<RetrievalMode>('hybrid');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [bundle, setBundle] = useState<EvidenceBundleResponse | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
-    setSubmittedQuery(query.trim());
+
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await executeRetrieve({
+        query: query.trim(),
+        mode,
+        tenant_id: tenantId,
+        corpus_id: corpusId,
+        top_k_vector: 5,
+        max_depth: 2,
+        max_fan_out: 15,
+      });
+      setBundle(res);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Retrieval failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Compass className="w-5 h-5 text-emerald-400" />
-          <h2 className="text-lg font-semibold text-white">Multi-Hop Query Explorer</h2>
+          <h2 className="text-lg font-semibold text-white">Hybrid Retrieval Planner</h2>
         </div>
         <span className="text-xs bg-brand-500/10 text-brand-400 px-2.5 py-1 rounded-full border border-brand-500/20 font-medium">
-          Retrieval Planner Shell (Phase 0/1 Ready)
+          Phase 4 Active
         </span>
       </div>
 
@@ -51,7 +79,7 @@ export const QueryShell: React.FC = () => {
       <div>
         <label className="text-xs font-medium text-slate-400 flex items-center gap-1.5 mb-2">
           <Sparkles className="w-3.5 h-3.5 text-brand-400" />
-          Test Benchmark Questions:
+          Select Benchmark Question:
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {BENCHMARK_QUERIES.map((bq) => (
@@ -60,7 +88,7 @@ export const QueryShell: React.FC = () => {
               type="button"
               onClick={() => {
                 setQuery(bq.q);
-                setSubmittedQuery(null);
+                setBundle(null);
               }}
               className={`text-left p-3 rounded-xl border text-xs transition-all ${
                 query === bq.q
@@ -136,30 +164,130 @@ export const QueryShell: React.FC = () => {
 
           <button
             type="submit"
-            className="px-5 py-2 rounded-xl text-xs font-semibold text-slate-950 bg-brand-400 hover:bg-brand-300 transition-colors flex items-center space-x-1.5 shadow-md shadow-brand-500/20"
+            disabled={loading}
+            className="px-5 py-2.5 rounded-xl text-xs font-semibold text-slate-950 bg-gradient-to-r from-brand-400 to-emerald-400 hover:opacity-95 transition-opacity disabled:opacity-50 flex items-center space-x-1.5 shadow-lg shadow-brand-500/10"
           >
-            <span>Preview Planner Flow</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Retrieving & Fusing Evidence...</span>
+              </>
+            ) : (
+              <>
+                <span>Execute Retrieval</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </>
+            )}
           </button>
         </div>
       </form>
 
-      {/* Query Preview / Roadmap State */}
-      {submittedQuery && (
-        <div className="border border-brand-500/30 bg-slate-850/80 rounded-xl p-4 space-y-3 animate-in fade-in">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-xs font-semibold text-brand-300">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>Query Planner Configured: {mode.toUpperCase()}</span>
+      {error && (
+        <div className="flex items-center space-x-2 text-rose-400 text-xs bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Live Evidence Bundle Results */}
+      {bundle && (
+        <div className="space-y-5 pt-2 border-t border-slate-800">
+          {/* Telemetry Metrics Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-slate-850 border border-slate-800 rounded-xl p-3">
+              <span className="text-[10px] text-slate-400 uppercase font-mono">Total Latency</span>
+              <p className="text-base font-bold text-white flex items-center gap-1 mt-0.5">
+                <Clock className="w-3.5 h-3.5 text-brand-400" />
+                {bundle.metrics.latency_total_ms} ms
+              </p>
             </div>
-            <span className="text-[11px] font-mono text-slate-500">Max Depth: 2 | Fan-Out: 15</span>
+            <div className="bg-slate-850 border border-slate-800 rounded-xl p-3">
+              <span className="text-[10px] text-slate-400 uppercase font-mono">Vector Search</span>
+              <p className="text-base font-bold text-emerald-400 mt-0.5">
+                {bundle.metrics.latency_vector_ms} ms
+              </p>
+            </div>
+            <div className="bg-slate-850 border border-slate-800 rounded-xl p-3">
+              <span className="text-[10px] text-slate-400 uppercase font-mono">Graph Traversal</span>
+              <p className="text-base font-bold text-brand-300 mt-0.5">
+                {bundle.metrics.latency_graph_ms} ms
+              </p>
+            </div>
+            <div className="bg-slate-850 border border-slate-800 rounded-xl p-3">
+              <span className="text-[10px] text-slate-400 uppercase font-mono">Fused Evidence</span>
+              <p className="text-base font-bold text-white mt-0.5">
+                {bundle.metrics.fused_chunks_count} Chunks
+              </p>
+            </div>
           </div>
 
-          <div className="text-xs text-slate-300 bg-slate-900/90 rounded-lg p-3 border border-slate-800 space-y-1 font-mono">
-            <p className="text-slate-400">Target Question: <span className="text-white">"{submittedQuery}"</span></p>
-            <p className="text-slate-400">Seed Vector Retrieval: <span className="text-emerald-400">Pending Phase 4</span></p>
-            <p className="text-slate-400">Bounded Cypher Traversal: <span className="text-emerald-400">Pending Phase 4</span></p>
-            <p className="text-slate-400">Citation Synthesis & Graph Visualizer: <span className="text-emerald-400">Pending Phase 5</span></p>
+          {/* Graph Traversed Paths */}
+          {bundle.graph_paths.length > 0 && (
+            <div className="space-y-2.5">
+              <h3 className="text-xs font-semibold text-white flex items-center gap-1.5">
+                <GitCommit className="w-3.5 h-3.5 text-brand-400" />
+                Traversed Knowledge Graph Path ({bundle.graph_paths.length} Edges)
+              </h3>
+              <div className="space-y-2">
+                {bundle.graph_paths.map((p, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-slate-850 border border-brand-500/30 rounded-xl p-3 flex flex-wrap items-center gap-2 text-xs"
+                  >
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-400 border border-brand-500/20">
+                      Hop {p.hop}
+                    </span>
+                    <span className="font-semibold text-white">{p.source_entity}</span>
+                    <span className="text-brand-300 font-mono text-[11px]">--[{p.relation}]--&gt;</span>
+                    <span className="font-semibold text-white">{p.target_entity}</span>
+                    <span className="text-[10px] text-slate-400 ml-auto font-mono">
+                      Confidence: {Math.round(p.confidence * 100)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Fused Evidence Chunks */}
+          <div className="space-y-2.5">
+            <h3 className="text-xs font-semibold text-white flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-emerald-400" />
+              Fused Evidence Bundle ({bundle.fused_evidence_chunks.length} Deduplicated Passages)
+            </h3>
+            <div className="space-y-2">
+              {bundle.fused_evidence_chunks.map((c) => (
+                <div
+                  key={c.chunk_id}
+                  className="bg-slate-850 border border-slate-750 rounded-xl p-3 space-y-1.5"
+                >
+                  <div className="flex items-center justify-between text-[11px]">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-mono text-slate-400">{c.chunk_id.substring(0, 24)}...</span>
+                      {c.section_header && (
+                        <span className="text-slate-300 bg-slate-800 px-1.5 py-0.2 rounded">
+                          {c.section_header}
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded-full uppercase ${
+                        c.source === 'fused'
+                          ? 'bg-purple-500/10 text-purple-300 border border-purple-500/20'
+                          : c.source === 'graph'
+                          ? 'bg-brand-500/10 text-brand-300 border border-brand-500/20'
+                          : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
+                      }`}
+                    >
+                      {c.source} (score: {c.similarity_score.toFixed(2)})
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 font-mono leading-relaxed bg-slate-900 p-2.5 rounded-lg border border-slate-800">
+                    {c.text}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

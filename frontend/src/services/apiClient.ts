@@ -101,3 +101,26 @@ export async function resolveAmbiguity(matchId: string, action: 'APPROVE_MERGE' 
   }
   return resp.json();
 }
+
+export interface RetrieveParams {
+  query: string;
+  mode: import('../types/api').RetrievalMode;
+  tenant_id: string;
+  corpus_id: string;
+  top_k_vector?: number;
+  max_depth?: number;
+  max_fan_out?: number;
+}
+
+export async function executeRetrieve(params: RetrieveParams): Promise<import('../types/api').EvidenceBundleResponse> {
+  const resp = await fetch(`${BASE_URL}/api/v1/retrieve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!resp.ok) {
+    const errorBody = await resp.json().catch(() => null);
+    throw new Error(errorBody?.message || `Retrieval failed with status ${resp.status}`);
+  }
+  return resp.json();
+}

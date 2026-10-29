@@ -1,7 +1,7 @@
 """PostgreSQL + pgvector repository for documents, chunks, and ingestion jobs.
 Supports live asyncpg connection and robust in-memory fallback for local testing.
 """
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime, timezone
 import asyncpg
 
@@ -78,6 +78,47 @@ class PostgresRepository:
 
     async def get_chunks_for_document(self, doc_id: str) -> List[Chunk]:
         return self._mem_chunks.get(doc_id, [])
+
+    async def get_chunk_by_id(self, chunk_id: str) -> Optional[Chunk]:
+        for chunk_list in self._mem_chunks.values():
+            for c in chunk_list:
+                if c.id == chunk_id:
+                    return c
+        return None
+
+    async def search_chunks_by_vector(
+        self,
+        query_embedding: List[float],
+        tenant_id: str,
+        corpus_id: str,
+        top_k: int = 5,
+    ) -> List[Tuple[Chunk, float]]:
+        """Searches scoped chunks by vector cosine similarity."""
+        import numpy as np
+
+        # In-memory cosine similarity computation
+        scored: List[Tuple[Chunk, float]] = []
+        q_vec = np.array(query_embedding, dtype=np.float32)
+        q_norm = np.linalg.norm(q_vec)
+        if q_norm > 0:
+            q_vec = q_vec / q_norm
+
+        for chunk_list in self._mem_chunks.values():
+            for c in chunk_list:
+                if c.tenant_id == tenant_id and c.corpus_id == corpus_id:
+                    if c.embedding:
+                        c_vec = np.array(c.embedding, dtype=np.float32)
+                        c_norm = np.linalg.norm(c_vec)
+                        if c_norm > 0:
+                            c_vec = c_vec / c_norm
+                        sim = float(np.dot(q_vec, c_vec))
+                        scored.append((c, sim))
+                    else:
+                        scored.append((c, 0.0))
+
+        # Sort descending by similarity
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return scored[:top_k]
 
     async def save_job(self, job: IngestionJob) -> IngestionJob:
         self._mem_jobs[job.id] = job

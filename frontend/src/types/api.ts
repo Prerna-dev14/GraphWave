@@ -81,6 +81,51 @@ export interface AmbiguousMatch {
   created_at: string;
 }
 
+export type RetrievalMode = 'hybrid' | 'vector' | 'graph';
+
+export interface RetrievedChunkSchema {
+  chunk_id: string;
+  document_id: string;
+  chunk_index: number;
+  text: string;
+  section_header: string | null;
+  similarity_score: number;
+  source: 'vector' | 'graph' | 'fused';
+}
+
+export interface TraversedEdgeSchema {
+  source_entity: string;
+  source_type: string;
+  relation: string;
+  target_entity: string;
+  target_type: string;
+  confidence: number;
+  hop: number;
+  source_chunk_ids: string[];
+  evidence_text: string | null;
+}
+
+export interface RetrievalMetricsSchema {
+  latency_vector_ms: number;
+  latency_graph_ms: number;
+  latency_fusion_ms: number;
+  latency_total_ms: number;
+  seed_chunks_count: number;
+  graph_edges_count: number;
+  fused_chunks_count: number;
+}
+
+export interface EvidenceBundleResponse {
+  query: string;
+  mode: RetrievalMode;
+  tenant_id: string;
+  corpus_id: string;
+  seed_chunks: RetrievedChunkSchema[];
+  graph_paths: TraversedEdgeSchema[];
+  fused_evidence_chunks: RetrievedChunkSchema[];
+  metrics: RetrievalMetricsSchema;
+}
+
 export interface ServiceDependencyStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
   latency_ms?: number;

@@ -257,5 +257,48 @@ class Neo4jRepository:
                 chunk_id=source_chunk_id,
             )
 
+    async def traverse_bounded_neighborhood(
+        self,
+        seed_entity_ids: List[str],
+        tenant_id: str,
+        corpus_id: str,
+        max_depth: int = 2,
+        max_fan_out: int = 15,
+        timeout_sec: float = 5.0,
+    ) -> List[Dict[str, Any]]:
+        """Traverses relationships bounded by depth, fan-out, and tenant/corpus scope."""
+        traversed_edges: List[Dict[str, Any]] = []
+
+        # In-memory graph traversal (works with 0 database dependencies for offline testing)
+        visited_nodes = set(seed_entity_ids)
+        visited_edge_keys = set()
+        current_frontier = set(seed_entity_ids)
+
+        for hop in range(1, max_depth + 1):
+            next_frontier = set()
+            for edge in self._mem_edges:
+                if edge.get("tenant_id") == tenant_id and edge.get("corpus_id") == corpus_id:
+                    src = edge.get("source")
+                    tgt = edge.get("target")
+                    rel = edge.get("relation", "")
+                    edge_key = (src, rel, tgt)
+
+                    if (src in current_frontier or tgt in current_frontier) and edge_key not in visited_edge_keys:
+                        visited_edge_keys.add(edge_key)
+                        edge_copy = dict(edge)
+                        edge_copy["hop"] = hop
+                        traversed_edges.append(edge_copy)
+                        if len(traversed_edges) >= max_fan_out:
+                            break
+                        new_node = tgt if src in current_frontier else src
+                        if new_node not in visited_nodes:
+                            next_frontier.add(new_node)
+                            visited_nodes.add(new_node)
+            if len(traversed_edges) >= max_fan_out:
+                break
+            current_frontier = next_frontier
+
+        return traversed_edges[:max_fan_out]
+
 
 neo4j_repo = Neo4jRepository()
