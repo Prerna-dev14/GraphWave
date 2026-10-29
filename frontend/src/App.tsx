@@ -65,7 +65,7 @@ export const App: React.FC = () => {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto w-full px-6 py-8 flex-1 space-y-8">
-        {/* Phase 0/1 Status Banner */}
+        {/* System Status Banner */}
         <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start space-x-3.5">
             <div className="p-2.5 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400 mt-0.5">
@@ -73,20 +73,20 @@ export const App: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h2 className="text-sm font-semibold text-white">Phase 0 & 1 Operational Foundation Active</h2>
+                <h2 className="text-sm font-semibold text-white">Phase 5 End-to-End Vertical Slice Active</h2>
                 <span className="text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-mono">
                   Verified Clean
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Ontology constraints, deterministic ID algorithms, boundary-aware parser, pgvector & Neo4j schemas, and mock adapters are active.
+                Multi-hop ingestion, candidate claim extraction, conservative entity resolution, hybrid vector/graph retrieval, and citation-grounded synthesis are fully operational.
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
-            <span className="px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700">Tests: 14/14 PASS</span>
-            <span className="px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700">API: /health/live 200</span>
+            <span className="px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700">Tests: 34/34 PASS</span>
+            <span className="px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700">API: /health/ready 200</span>
           </div>
         </div>
 
