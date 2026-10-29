@@ -109,5 +109,34 @@ class PostgresRepository:
             job.updated_at = datetime.now(timezone.utc)
         return job
 
+    # Phase 2: Extraction runs & claims storage
+    async def save_extraction_run(self, run: "ExtractionRun") -> "ExtractionRun":
+        if not hasattr(self, "_mem_extraction_runs"):
+            self._mem_extraction_runs: Dict[str, List[Any]] = {}
+        if run.document_id not in self._mem_extraction_runs:
+            self._mem_extraction_runs[run.document_id] = []
+        self._mem_extraction_runs[run.document_id].append(run)
+        return run
+
+    async def get_extraction_runs_for_document(self, doc_id: str) -> List[Any]:
+        if not hasattr(self, "_mem_extraction_runs"):
+            self._mem_extraction_runs = {}
+        return self._mem_extraction_runs.get(doc_id, [])
+
+    async def save_candidate_claims(self, claims: List["CandidateClaim"]) -> List["CandidateClaim"]:
+        if not hasattr(self, "_mem_candidate_claims"):
+            self._mem_candidate_claims: Dict[str, List[Any]] = {}
+        for c in claims:
+            doc_id = c.provenance.document_id
+            if doc_id not in self._mem_candidate_claims:
+                self._mem_candidate_claims[doc_id] = []
+            self._mem_candidate_claims[doc_id].append(c)
+        return claims
+
+    async def get_candidate_claims_for_document(self, doc_id: str) -> List[Any]:
+        if not hasattr(self, "_mem_candidate_claims"):
+            self._mem_candidate_claims = {}
+        return self._mem_candidate_claims.get(doc_id, [])
+
 
 postgres_repo = PostgresRepository()

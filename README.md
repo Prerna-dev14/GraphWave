@@ -135,8 +135,8 @@ npm run build
 |---|---|---|
 | **Phase 0** | Ontology, Provenance Model, Multi-Hop Benchmark Dataset, ADRs | **COMPLETED** |
 | **Phase 1** | Repo Setup, Postgres/pgvector & Neo4j Config, Health Checks, Ingestion Skeleton, Frontend Shell | **COMPLETED** |
-| **Phase 2** | Extraction Pipeline: LLM Prompts, Schema-Constrained Claim Extraction, Confidence Scoring | **READY FOR APPROVAL** |
-| **Phase 3** | Entity Resolution & Canonical Identity Merge Rules | Planned |
+| **Phase 2** | Extraction Pipeline: Schema Constraints, Confidence Thresholding, Prompt Injection Defense, Audit Logs | **COMPLETED** |
+| **Phase 3** | Entity Resolution & Canonical Identity Merge Rules | **READY FOR APPROVAL** |
 | **Phase 4** | Hybrid Retrieval Planner: Vector Seed + Bounded Cypher Expansion | Planned |
 | **Phase 5** | Answer Synthesis with Exact Citations & Interactive Graph Visualizer UI | Planned |
 | **Phase 6** | Automated Multi-Hop Evaluation Benchmark Execution (Vector vs Graph vs Hybrid) | Planned |

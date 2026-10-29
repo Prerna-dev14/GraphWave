@@ -64,3 +64,27 @@ async def test_document_ingestion_and_retrieval_flow():
         job_resp = await client.get(f"/api/v1/ingestion-jobs/{job_data['job_id']}")
         assert job_resp.status_code == 200
         assert job_resp.json()["job_id"] == job_data["job_id"]
+
+        # 5. Check Document Claims endpoint (Phase 2)
+        claims_resp = await client.get(f"/api/v1/documents/{doc_id}/claims")
+        assert claims_resp.status_code == 200
+        claims_data = claims_resp.json()
+        assert len(claims_data) >= 1
+        assert any(c["relation"] == "ACQUIRED" for c in claims_data)
+
+
+@pytest.mark.asyncio
+async def test_direct_extraction_endpoint():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        req = {
+            "text": "Acme Cloud completed the strategic corporate acquisition of DataWeaver Inc.",
+            "confidence_threshold": 0.65,
+        }
+        resp = await client.post("/api/v1/extract", json=req)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["validated_count"] >= 1
+        assert data["model_name"] is not None
+        assert len(data["validated_claims"]) >= 1
+        assert data["validated_claims"][0]["relation"] == "ACQUIRED"

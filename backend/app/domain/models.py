@@ -91,3 +91,17 @@ class IngestionJob(BaseModel):
     error_message: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ExtractionRun(BaseModel):
+    id: str
+    tenant_id: str
+    corpus_id: str
+    document_id: str
+    chunk_id: str
+    model_name: str
+    raw_claims: Dict[str, Any]
+    validated_claims_count: int
+    rejected_claims_count: int
+    execution_time_ms: float
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

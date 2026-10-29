@@ -180,45 +180,24 @@ class IngestionService:
             # 5. Graph writes (Document and Chunks)
             await self.graph_repo.merge_document_and_chunks(document, chunks)
 
-            # 6. Candidate claim extraction & validation
+            # 6. Candidate claim extraction & validation via ExtractionService (Phase 2)
             extracted_claims_count = 0
+            from app.services.extraction_service import extraction_service
+
             for chunk in chunks:
-                raw_claims = await self.llm_adapter.extract_claims(chunk.text, chunk.section_header)
-                for rc in raw_claims:
-                    val = validate_relation(
-                        EntityType(rc["subject_type"]),
-                        RelationType(rc["relation"]),
-                        EntityType(rc["object_type"]),
-                    )
-                    if val.is_valid:
-                        claim_id = f"claim_{uuid.uuid4().hex[:12]}"
-                        prov = ProvenanceRecord(
-                            tenant_id=tenant_id,
-                            corpus_id=corpus_id,
-                            document_id=doc_id,
-                            document_name=filename,
-                            document_version=version,
-                            chunk_id=chunk.id,
-                            section_header=chunk.section_header,
-                            confidence=rc.get("confidence", 0.9),
-                            extraction_model=getattr(self.llm_adapter, "model_name", "mock"),
-                        )
-                        claim = CandidateClaim(
-                            id=claim_id,
-                            tenant_id=tenant_id,
-                            corpus_id=corpus_id,
-                            subject_entity=rc["subject"],
-                            subject_type=EntityType(rc["subject_type"]),
-                            relation=RelationType(rc["relation"]),
-                            object_entity=rc["object"],
-                            object_type=EntityType(rc["object_type"]),
-                            confidence=rc.get("confidence", 0.9),
-                            status=ClaimStatus.VALIDATED,
-                            provenance=prov,
-                            evidence_text=rc.get("evidence", chunk.text[:100]),
-                        )
-                        await self.graph_repo.merge_candidate_claim(claim)
-                        extracted_claims_count += 1
+                claims, run_resp = await extraction_service.extract_and_validate(
+                    chunk_text=chunk.text,
+                    document_id=doc_id,
+                    document_name=filename,
+                    document_version=version,
+                    chunk_id=chunk.id,
+                    section_header=chunk.section_header,
+                    tenant_id=tenant_id,
+                    corpus_id=corpus_id,
+                )
+                for claim in claims:
+                    await self.graph_repo.merge_candidate_claim(claim)
+                    extracted_claims_count += 1
 
             # 7. Update Job Status to COMPLETED
             await self.pg_repo.update_job_status(

@@ -42,6 +42,20 @@ export interface IngestionJobResponse {
   updated_at: string;
 }
 
+export interface CandidateClaimResponse {
+  id: string;
+  subject: string;
+  subject_type: string;
+  relation: string;
+  object: string;
+  object_type: string;
+  confidence: number;
+  status: string;
+  chunk_id: string;
+  section_header: string | null;
+  evidence_text: string;
+}
+
 export interface ServiceDependencyStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
   latency_ms?: number;

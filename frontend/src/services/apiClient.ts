@@ -60,3 +60,11 @@ export async function fetchJobStatus(jobId: string): Promise<IngestionJobRespons
   }
   return resp.json();
 }
+
+export async function fetchDocumentClaims(docId: string): Promise<import('../types/api').CandidateClaimResponse[]> {
+  const resp = await fetch(`${BASE_URL}/api/v1/documents/${encodeURIComponent(docId)}/claims`);
+  if (!resp.ok) {
+    throw new Error(`Failed to fetch claims for doc ${docId}`);
+  }
+  return resp.json();
+}
