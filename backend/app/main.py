@@ -17,6 +17,7 @@ from app.api.v1.jobs import router as jobs_router
 from app.api.v1.extractions import router as extractions_router
 from app.api.v1.entities import router as entities_router
 from app.api.v1.retrieval import router as retrieval_router
+from app.api.v1.query import router as query_router
 
 
 @asynccontextmanager
@@ -105,6 +106,7 @@ app.include_router(jobs_router)
 app.include_router(extractions_router)
 app.include_router(entities_router)
 app.include_router(retrieval_router)
+app.include_router(query_router)
 
 
 if __name__ == "__main__":

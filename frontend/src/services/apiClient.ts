@@ -124,3 +124,33 @@ export async function executeRetrieve(params: RetrieveParams): Promise<import('.
   }
   return resp.json();
 }
+
+export interface QueryParams {
+  query: string;
+  mode: import('../types/api').RetrievalMode;
+  tenant_id: string;
+  corpus_id: string;
+  max_depth?: number;
+  max_fan_out?: number;
+}
+
+export async function executeQuery(params: QueryParams): Promise<import('../types/api').QueryResponse> {
+  const resp = await fetch(`${BASE_URL}/api/v1/query`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!resp.ok) {
+    const errorBody = await resp.json().catch(() => null);
+    throw new Error(errorBody?.message || `Query failed with status ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchRequestTrace(traceId: string): Promise<import('../types/api').RequestTraceResponse> {
+  const resp = await fetch(`${BASE_URL}/api/v1/requests/${encodeURIComponent(traceId)}`);
+  if (!resp.ok) {
+    throw new Error(`Failed to fetch trace ${traceId}`);
+  }
+  return resp.json();
+}

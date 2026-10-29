@@ -179,5 +179,17 @@ class PostgresRepository:
             self._mem_candidate_claims = {}
         return self._mem_candidate_claims.get(doc_id, [])
 
+    # Phase 5: Request traces storage
+    async def save_request_trace(self, trace_data: Dict[str, Any]):
+        if not hasattr(self, "_mem_traces"):
+            self._mem_traces: Dict[str, Dict[str, Any]] = {}
+        self._mem_traces[trace_data["request_id"]] = trace_data
+        return trace_data
+
+    async def get_request_trace(self, request_id: str) -> Optional[Dict[str, Any]]:
+        if not hasattr(self, "_mem_traces"):
+            self._mem_traces = {}
+        return self._mem_traces.get(request_id)
+
 
 postgres_repo = PostgresRepository()

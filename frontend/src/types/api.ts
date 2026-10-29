@@ -126,6 +126,53 @@ export interface EvidenceBundleResponse {
   metrics: RetrievalMetricsSchema;
 }
 
+export interface Citation {
+  chunk_id: string;
+  document_id: string;
+  section_header: string | null;
+  snippet: string;
+  document_version: string;
+}
+
+export interface QueryMetrics {
+  latency_vector_ms: number;
+  latency_graph_ms: number;
+  latency_fusion_ms: number;
+  latency_generation_ms: number;
+  latency_total_ms: number;
+  fused_chunks_count: number;
+  graph_edges_count: number;
+  citations_count: number;
+  estimated_cost_usd: number;
+}
+
+export interface QueryResponse {
+  query: string;
+  answer: string;
+  mode: RetrievalMode;
+  tenant_id: string;
+  corpus_id: string;
+  trace_id: string;
+  citations: Citation[];
+  graph_paths: TraversedEdgeSchema[];
+  metrics: QueryMetrics;
+  created_at: string;
+}
+
+export interface RequestTraceResponse {
+  request_id: string;
+  tenant_id: string;
+  corpus_id: string;
+  query_text: string;
+  retrieval_mode: string;
+  retrieved_chunk_count: number;
+  traversed_graph_nodes_count: number;
+  latency_total_ms: number;
+  latency_retrieval_ms: number;
+  latency_generation_ms: number;
+  created_at: string;
+}
+
 export interface ServiceDependencyStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
   latency_ms?: number;
