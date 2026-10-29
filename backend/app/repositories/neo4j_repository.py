@@ -300,5 +300,42 @@ class Neo4jRepository:
 
         return traversed_edges[:max_fan_out]
 
+    async def purge_document_claims(self, doc_id: str, tenant_id: str, corpus_id: str) -> int:
+        """Purges relationships originating from a deleted document within tenant/corpus."""
+        if not hasattr(self, "_mem_edges"):
+            self._mem_edges = []
+
+        initial_count = len(self._mem_edges)
+        self._mem_edges = [
+            e for e in self._mem_edges
+            if not (
+                e.get("tenant_id") == tenant_id
+                and e.get("corpus_id") == corpus_id
+                and any(doc_id in chunk_id for chunk_id in e.get("source_chunk_ids", []))
+            )
+        ]
+        purged_count = initial_count - len(self._mem_edges)
+
+        if self.is_connected and self.driver:
+            try:
+                async with self.driver.session(database=settings.NEO4J_DATABASE) as session:
+                    await session.run(
+                        """
+                        MATCH ()-[r]->()
+                        WHERE r.tenant_id = $tenant_id
+                          AND r.corpus_id = $corpus_id
+                          AND ANY(cid IN r.source_chunk_ids WHERE cid CONTAINS $doc_id)
+                        DELETE r
+                        """,
+                        tenant_id=tenant_id,
+                        corpus_id=corpus_id,
+                        doc_id=doc_id,
+                    )
+            except Exception as e:
+                logger.warning(f"Neo4j purge_document_claims failed: {e}")
+
+        return purged_count
+
 
 neo4j_repo = Neo4jRepository()
+

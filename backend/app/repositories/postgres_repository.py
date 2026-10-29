@@ -67,6 +67,31 @@ class PostgresRepository:
             if d.tenant_id == tenant_id and d.corpus_id == corpus_id
         ]
 
+    async def delete_document(self, doc_id: str, tenant_id: str, corpus_id: str) -> bool:
+        """Deletes a document and its dependent chunks and candidate claims within tenant/corpus."""
+        if self.pool:
+            try:
+                async with self.pool.acquire() as conn:
+                    await conn.execute("DELETE FROM candidate_claims WHERE document_id = $1;", doc_id)
+                    await conn.execute("DELETE FROM chunks WHERE document_id = $1;", doc_id)
+                    await conn.execute("DELETE FROM ingestion_jobs WHERE document_id = $1;", doc_id)
+                    await conn.execute(
+                        "DELETE FROM documents WHERE id = $1 AND tenant_id = $2 AND corpus_id = $3;",
+                        doc_id, tenant_id, corpus_id,
+                    )
+            except Exception as e:
+                logger.warning(f"PostgreSQL delete_document failed, using memory fallback: {e}")
+
+        doc = self._mem_documents.get(doc_id)
+        if doc and doc.tenant_id == tenant_id and doc.corpus_id == corpus_id:
+            del self._mem_documents[doc_id]
+            self._mem_chunks.pop(doc_id, None)
+            if hasattr(self, "_mem_candidate_claims"):
+                self._mem_candidate_claims.pop(doc_id, None)
+            return True
+        return False
+
+
     async def save_chunks(self, chunks: List[Chunk]) -> List[Chunk]:
         if not chunks:
             return []

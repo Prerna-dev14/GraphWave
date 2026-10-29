@@ -13,7 +13,7 @@ class Citation(BaseModel):
 
 
 class QueryRequest(BaseModel):
-    query: str = Field(..., min_length=1, description="Natural language question")
+    query: str = Field(..., min_length=1, max_length=1000, description="Natural language question")
     mode: RetrievalMode = Field(default=RetrievalMode.HYBRID, description="Retrieval strategy: hybrid, vector, or graph")
     tenant_id: Optional[str] = Field(default=None)
     corpus_id: Optional[str] = Field(default=None)

@@ -129,3 +129,28 @@ async def get_document_chunks(
         )
         for c in chunks
     ]
+
+
+@router.delete("/{document_id}", status_code=status.HTTP_200_OK)
+async def delete_document(
+    document_id: str,
+    tenant_id: str = Query(default=settings.DEFAULT_TENANT_ID),
+    corpus_id: str = Query(default=settings.DEFAULT_CORPUS_ID),
+):
+    """Deletes a document and cascades deletion across chunks, candidate claims, and graph relationships."""
+    from app.repositories.neo4j_repository import neo4j_repo
+    deleted_pg = await postgres_repo.delete_document(document_id, tenant_id, corpus_id)
+    if not deleted_pg:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document '{document_id}' not found within scope {tenant_id}/{corpus_id}",
+        )
+    purged_graph_edges = await neo4j_repo.purge_document_claims(document_id, tenant_id, corpus_id)
+    return {
+        "status": "success",
+        "message": f"Document {document_id} and associated chunks and graph relationships deleted",
+        "purged_graph_edges": purged_graph_edges,
+        "tenant_id": tenant_id,
+        "corpus_id": corpus_id,
+    }
+
