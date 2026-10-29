@@ -33,17 +33,25 @@ class DeterministicMockLLMAdapter(BaseLLMAdapter):
     """Deterministic Mock LLM for reproducible testing and local development without API keys."""
 
     async def complete(self, prompt: str, system_prompt: Optional[str] = None) -> str:
-        # Check if prompt is answering a multi-hop question
         prompt_lower = prompt.lower()
-        if "omnimesh" in prompt_lower:
+        # Isolate User Question to prevent keywords in background evidence chunks from overriding intent
+        question_lower = prompt_lower
+        if "user question:" in prompt_lower:
+            parts = prompt_lower.split("user question:", 1)[1]
+            if "evidence bundle:" in parts:
+                question_lower = parts.split("evidence bundle:", 1)[0]
+            else:
+                question_lower = parts
+
+        if "omnimesh" in question_lower:
             return "Acme Cloud owns the OmniMesh distributed cache engine, having acquired its creator DataWeaver Inc. in 2024. [Citation: doc_acme_corp_v1_chunk_0001, doc_dataweaver_v1_chunk_0001]"
-        elif "shieldpay" in prompt_lower and "standard" in prompt_lower:
+        elif "shieldpay" in question_lower:
             return "ShieldPay's encryption-at-rest provider (KryptonVault) complies with FIPS 140-3 Level 4. [Citation: doc_shieldpay_v1_chunk_0001, doc_kryptonvault_v1_chunk_0001]"
-        elif "hypergraph" in prompt_lower and "founded" in prompt_lower:
+        elif "hypergraph" in question_lower or "apex neural" in question_lower:
             return "Apex Neural was founded by Dr. Elena Vance, who led the Synapse Project that developed the HyperGraph Routing Algorithm. [Citation: doc_novagen_synapse_v1_chunk_0001, doc_hypergraph_spec_v1_chunk_0001, doc_apex_neural_v1_chunk_0001]"
-        elif "quantacore" in prompt_lower:
+        elif "quantacore" in question_lower:
             return "The available documents do not contain evidence regarding who founded QuantaCore Systems or the release year of their processor."
-        elif "helios energy" in prompt_lower:
+        elif "helios energy" in question_lower:
             return "Helios Energy develops the SolarGrid-X utility-scale battery system and is operating in a commercial pilot phase."
         return "Deterministic response generated based on available evidence."
 

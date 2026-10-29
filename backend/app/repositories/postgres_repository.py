@@ -191,5 +191,130 @@ class PostgresRepository:
             self._mem_traces = {}
         return self._mem_traces.get(request_id)
 
+    # Phase 6: Evaluation runs storage
+    async def save_evaluation_run(self, run_data: Dict[str, Any]) -> Dict[str, Any]:
+        if self.pool:
+            try:
+                import json
+                async with self.pool.acquire() as conn:
+                    await conn.execute(
+                        """
+                        INSERT INTO evaluation_runs (
+                            id, evaluation_dataset_version, retrieval_mode,
+                            answer_correctness, evidence_recall, citation_precision,
+                            latency_p50_ms, latency_p95_ms, token_cost_usd,
+                            total_questions, metrics_detail, created_at
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+                        ON CONFLICT (id) DO UPDATE SET
+                            answer_correctness = EXCLUDED.answer_correctness,
+                            evidence_recall = EXCLUDED.evidence_recall,
+                            citation_precision = EXCLUDED.citation_precision,
+                            latency_p50_ms = EXCLUDED.latency_p50_ms,
+                            latency_p95_ms = EXCLUDED.latency_p95_ms,
+                            token_cost_usd = EXCLUDED.token_cost_usd,
+                            metrics_detail = EXCLUDED.metrics_detail;
+                        """,
+                        run_data["id"],
+                        run_data["evaluation_dataset_version"],
+                        run_data["retrieval_mode"],
+                        run_data.get("answer_correctness", 0.0),
+                        run_data.get("evidence_recall", 0.0),
+                        run_data.get("citation_precision", 0.0),
+                        run_data.get("latency_p50_ms", 0.0),
+                        run_data.get("latency_p95_ms", 0.0),
+                        run_data.get("token_cost_usd", 0.0),
+                        run_data.get("total_questions", 0),
+                        json.dumps(run_data.get("metrics_detail", {})),
+                    )
+            except Exception as e:
+                logger.warning(f"PostgreSQL save_evaluation_run failed, using memory fallback: {e}")
+
+        if not hasattr(self, "_mem_eval_runs"):
+            self._mem_eval_runs: Dict[str, Dict[str, Any]] = {}
+        self._mem_eval_runs[run_data["id"]] = run_data
+        return run_data
+
+    async def list_evaluation_runs(self, limit: int = 20) -> List[Dict[str, Any]]:
+        if self.pool:
+            try:
+                import json
+                async with self.pool.acquire() as conn:
+                    rows = await conn.fetch(
+                        """
+                        SELECT id, evaluation_dataset_version, retrieval_mode,
+                               answer_correctness, evidence_recall, citation_precision,
+                               latency_p50_ms, latency_p95_ms, token_cost_usd,
+                               total_questions, metrics_detail, created_at
+                        FROM evaluation_runs
+                        ORDER BY created_at DESC
+                        LIMIT $1;
+                        """,
+                        limit,
+                    )
+                    return [
+                        {
+                            "id": r["id"],
+                            "evaluation_dataset_version": r["evaluation_dataset_version"],
+                            "retrieval_mode": r["retrieval_mode"],
+                            "answer_correctness": r["answer_correctness"],
+                            "evidence_recall": r["evidence_recall"],
+                            "citation_precision": r["citation_precision"],
+                            "latency_p50_ms": r["latency_p50_ms"],
+                            "latency_p95_ms": r["latency_p95_ms"],
+                            "token_cost_usd": r["token_cost_usd"],
+                            "total_questions": r["total_questions"],
+                            "metrics_detail": json.loads(r["metrics_detail"]) if isinstance(r["metrics_detail"], str) else r["metrics_detail"],
+                            "created_at": r["created_at"].isoformat() if hasattr(r["created_at"], "isoformat") else str(r["created_at"]),
+                        }
+                        for r in rows
+                    ]
+            except Exception as e:
+                logger.warning(f"PostgreSQL list_evaluation_runs failed, using memory fallback: {e}")
+
+        if not hasattr(self, "_mem_eval_runs"):
+            self._mem_eval_runs = {}
+        # Return sorted by created_at desc
+        runs = list(self._mem_eval_runs.values())
+        return runs[-limit:]
+
+    async def get_evaluation_run(self, run_id: str) -> Optional[Dict[str, Any]]:
+        if self.pool:
+            try:
+                import json
+                async with self.pool.acquire() as conn:
+                    r = await conn.fetchrow(
+                        """
+                        SELECT id, evaluation_dataset_version, retrieval_mode,
+                               answer_correctness, evidence_recall, citation_precision,
+                               latency_p50_ms, latency_p95_ms, token_cost_usd,
+                               total_questions, metrics_detail, created_at
+                        FROM evaluation_runs
+                        WHERE id = $1;
+                        """,
+                        run_id,
+                    )
+                    if r:
+                        return {
+                            "id": r["id"],
+                            "evaluation_dataset_version": r["evaluation_dataset_version"],
+                            "retrieval_mode": r["retrieval_mode"],
+                            "answer_correctness": r["answer_correctness"],
+                            "evidence_recall": r["evidence_recall"],
+                            "citation_precision": r["citation_precision"],
+                            "latency_p50_ms": r["latency_p50_ms"],
+                            "latency_p95_ms": r["latency_p95_ms"],
+                            "token_cost_usd": r["token_cost_usd"],
+                            "total_questions": r["total_questions"],
+                            "metrics_detail": json.loads(r["metrics_detail"]) if isinstance(r["metrics_detail"], str) else r["metrics_detail"],
+                            "created_at": r["created_at"].isoformat() if hasattr(r["created_at"], "isoformat") else str(r["created_at"]),
+                        }
+            except Exception as e:
+                logger.warning(f"PostgreSQL get_evaluation_run failed, using memory fallback: {e}")
+
+        if not hasattr(self, "_mem_eval_runs"):
+            self._mem_eval_runs = {}
+        return self._mem_eval_runs.get(run_id)
+
 
 postgres_repo = PostgresRepository()
+

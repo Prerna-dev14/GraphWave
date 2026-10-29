@@ -154,3 +154,52 @@ export async function fetchRequestTrace(traceId: string): Promise<import('../typ
   }
   return resp.json();
 }
+
+// Phase 6: Evaluation Benchmark API Calls
+export async function triggerEvaluationRun(params: {
+  retrieval_mode?: string;
+  tenant_id: string;
+  corpus_id: string;
+  max_depth?: number;
+  max_fan_out?: number;
+}): Promise<import('../types/api').EvaluationComparisonResponse | import('../types/api').EvaluationRunResponse> {
+  const resp = await fetch(`${BASE_URL}/api/v1/evaluations/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!resp.ok) {
+    const errorBody = await resp.json().catch(() => null);
+    throw new Error(errorBody?.detail || `Evaluation run failed with status ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchEvaluationComparison(
+  tenantId: string,
+  corpusId: string,
+  maxDepth: number = 2,
+  maxFanOut: number = 15
+): Promise<import('../types/api').EvaluationComparisonResponse> {
+  const query = new URLSearchParams({
+    tenant_id: tenantId,
+    corpus_id: corpusId,
+    max_depth: maxDepth.toString(),
+    max_fan_out: maxFanOut.toString(),
+  });
+  const resp = await fetch(`${BASE_URL}/api/v1/evaluations/compare?${query.toString()}`);
+  if (!resp.ok) {
+    const errorBody = await resp.json().catch(() => null);
+    throw new Error(errorBody?.detail || `Comparison benchmark failed with status ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function listEvaluationRuns(limit: number = 20): Promise<import('../types/api').EvaluationRunResponse[]> {
+  const resp = await fetch(`${BASE_URL}/api/v1/evaluations/runs?limit=${limit}`);
+  if (!resp.ok) {
+    throw new Error(`Failed to list evaluation runs with status ${resp.status}`);
+  }
+  return resp.json();
+}
+

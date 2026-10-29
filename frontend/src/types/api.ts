@@ -189,3 +189,47 @@ export interface ReadyHealthResponse {
     neo4j: ServiceDependencyStatus;
   };
 }
+
+// Phase 6: Evaluation Benchmark Types
+export interface TestCaseResult {
+  test_case_id: string;
+  category: string;
+  hops: number;
+  question: string;
+  retrieval_mode: string;
+  evidence_recall: number;
+  citation_precision: number;
+  answer_correctness: number;
+  latency_ms: number;
+  token_cost_usd: number;
+  retrieved_chunks_count: number;
+  traversed_paths_count: number;
+  generated_answer: string;
+  expected_answer: string;
+  passed: boolean;
+  notes?: string;
+}
+
+export interface EvaluationRunResponse {
+  id: string;
+  evaluation_dataset_version: string;
+  retrieval_mode: string;
+  answer_correctness: number;
+  evidence_recall: number;
+  citation_precision: number;
+  latency_p50_ms: number;
+  latency_p95_ms: number;
+  token_cost_usd: number;
+  total_questions: number;
+  metrics_detail: TestCaseResult[];
+  created_at: string;
+}
+
+export interface EvaluationComparisonResponse {
+  dataset_version: string;
+  timestamp: string;
+  runs: EvaluationRunResponse[];
+  recommended_mode: string;
+  analysis_summary: string;
+}
+
